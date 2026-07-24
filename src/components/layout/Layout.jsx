@@ -2,12 +2,12 @@ import { Outlet, NavLink } from 'react-router-dom'
 
 const navItems = [
   { to: '/auction', label: 'Аукцион', icon: '◈' },
-  { to: '/auction-deals', label: 'Скидки', icon: '◇' },
-  { to: '/auction-value-now', label: 'Выгода сейчас', icon: '▼' },
+  { to: '/auction-deals', label: 'Скидки(в работе)', icon: '◇' },
+  { to: '/auction-value-now', label: 'Выгода сейчас(арты)', icon: '▼' },
   { to: '/auction-stats', label: 'Статистика', icon: '▣' },
   { to: '/hideout', label: 'Убежище', icon: '⌂' },
   { to: '/crafts', label: 'Крафты', icon: '⚙' },
-  { to: '/profitable-crafts', label: 'Выгодные', icon: '▲' },
+  { to: '/profitable-crafts', label: 'Выгодные крафты', icon: '▲' },
 ]
 
 function Layout() {

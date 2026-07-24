@@ -23,6 +23,23 @@ export function getAuctionMeta({ locale = 'ru' } = {}) {
   return request('/meta/auction', { locale })
 }
 
+export function getAuctionItemDetail({
+  itemId,
+  region = 'RU',
+  locale = 'ru',
+  qlt = 'all',
+  ptn = 'all',
+  period = 1,
+} = {}) {
+  return request(`/auction/item/${encodeURIComponent(itemId)}`, {
+    region,
+    locale,
+    qlt,
+    ptn,
+    period,
+  })
+}
+
 export function getAuctionValueNow({
   region = 'RU',
   locale = 'ru',

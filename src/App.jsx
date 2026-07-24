@@ -8,6 +8,7 @@ import ProfitableCraftsPage from './pages/profitable-crafts/index'
 import AuctionDealsPage from './pages/auction-deals/index'
 import AuctionStatsPage from './pages/auction-stats/index'
 import AuctionValueNowPage from './pages/auction-value-now/index'
+import AuctionItemPage from './pages/auction-item/index'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="auction" element={<AuctionPage />} />
           <Route path="auction-deals" element={<AuctionDealsPage />} />
           <Route path="auction-value-now" element={<AuctionValueNowPage />} />
+          <Route path="auction/item/:itemId" element={<AuctionItemPage />} />
           <Route path="auction-stats" element={<AuctionStatsPage />} />
           <Route path="hideout" element={<HideoutPage />} />
           <Route path="crafts" element={<CraftsPage />} />

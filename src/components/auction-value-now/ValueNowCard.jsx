@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { getItemIconUrl } from '../../api/client'
 
 const COLOR_CLASS = {
@@ -23,16 +24,29 @@ function formatPrice(value) {
   return `${new Intl.NumberFormat('ru-RU').format(value)} ₽`
 }
 
-function ValueNowCard({ item, locale }) {
+function buildItemLink(item, region, qlt, ptn) {
+  const params = new URLSearchParams()
+  if (region) params.set('region', region)
+  if (qlt != null && qlt !== 'all') params.set('qlt', String(qlt))
+  if (ptn != null && ptn !== 'all') params.set('ptn', String(ptn))
+  const query = params.toString()
+  return `/auction/item/${encodeURIComponent(item.itemId)}${query ? `?${query}` : ''}`
+}
+
+function ValueNowCard({ item, locale, region = 'RU' }) {
   const name = item.nameRu || item.nameEn || item.itemId
   const colorClass = COLOR_CLASS[item.color] ?? 'text-zone-text'
   const iconUrl = getItemIconUrl(item.icon, locale)
   const byQuality = item.byQuality ?? []
+  const itemLink = buildItemLink(item, region)
 
   return (
     <article className="border border-zone-border bg-zone-panel/40 p-4">
       <div className="flex flex-wrap items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-zone-border bg-zone-black/50">
+        <Link
+          to={itemLink}
+          className="flex h-12 w-12 shrink-0 items-center justify-center border border-zone-border bg-zone-black/50 no-underline transition-colors hover:border-zone-amber"
+        >
           {iconUrl ? (
             <img
               src={iconUrl}
@@ -46,12 +60,17 @@ function ValueNowCard({ item, locale }) {
           ) : (
             <span className="text-xs text-zone-muted">?</span>
           )}
-        </div>
+        </Link>
 
         <div className="min-w-0 flex-1">
-          <p className={`text-base font-medium ${colorClass}`}>{name}</p>
+          <Link
+            to={itemLink}
+            className={`text-base font-medium no-underline hover:underline ${colorClass}`}
+          >
+            {name}
+          </Link>
           <p className="text-[10px] uppercase tracking-widest text-zone-muted">
-            {item.category}
+            {item.category} · нажми для истории
           </p>
         </div>
 
@@ -88,7 +107,14 @@ function ValueNowCard({ item, locale }) {
                       key={`${item.itemId}-qlt-${quality.qlt}-ptn-${row.ptn}`}
                       className="border-b border-zone-border/20"
                     >
-                      <td className="py-1.5 pr-3 text-zone-cyan">{row.ptnLabel}</td>
+                      <td className="py-1.5 pr-3">
+                        <Link
+                          to={buildItemLink(item, region, quality.qlt, row.ptn)}
+                          className="text-zone-cyan no-underline hover:underline"
+                        >
+                          {row.ptnLabel}
+                        </Link>
+                      </td>
                       <td className="py-1.5 pr-3 text-zone-amber">
                         {formatPrice(row.minBuyoutPerUnit)}
                       </td>
