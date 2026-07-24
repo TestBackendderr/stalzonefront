@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Russo One", sans-serif;
+  --font-mono: "Share Tech Mono", monospace;
+
+  --color-zone-black: #080a08;
+  --color-zone-dark: #111611;
+  --color-zone-panel: #1a2118;
+  --color-zone-border: #3a4a32;
+  --color-zone-olive: #4a5c3a;
+  --color-zone-amber: #c9a227;
+  --color-zone-amber-dim: #8a7020;
+  --color-zone-rust: #8b4513;
+  --color-zone-green: #6b8f3c;
+  --color-zone-cyan: #4a8f7a;
+  --color-zone-text: #b8c4a8;
+  --color-zone-muted: #6a7a5a;
+  --color-zone-danger: #c44a2a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--color-zone-text);
+  background-color: var(--color-zone-black);
+  overflow-x: hidden;
+}
+
+/* Scanlines + vignette atmosphere */
+.zone-atmosphere {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.zone-atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0.12) 4px
+  );
+}
+
+.zone-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 40%,
+    rgba(0, 0, 0, 0.65) 100%
+  );
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(201, 162, 39, 0.4);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 16px rgba(201, 162, 39, 0.7);
+  }
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 0.85;
+  }
+  94% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes radiation-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-flicker {
+  animation: flicker 6s linear infinite;
+}
+
+.animate-radiation {
+  animation: radiation-pulse 2s ease-in-out infinite;
+}
