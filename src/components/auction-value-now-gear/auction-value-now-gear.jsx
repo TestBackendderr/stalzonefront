@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getAuctionMeta, getAuctionValueNow } from '../../api/client'
-import ValueNowCard from './ValueNowCard'
+import { getAuctionMeta, getAuctionValueNowGear } from '../../api/client'
+import ValueNowGearCard from './ValueNowGearCard'
 
-const QUALITIES = [
-  { id: 'all', label: 'Все качества' },
-  { id: '0', label: 'Обычный' },
-  { id: '1', label: 'Необычный' },
-  { id: '2', label: 'Особый' },
-  { id: '3', label: 'Редкий' },
-  { id: '4', label: 'Исключительный' },
-  { id: '5', label: 'Легендарный' },
+const CATEGORIES = [
+  { id: 'equipment', label: 'Всё снаряжение' },
+  { id: 'weapon', label: 'Оружие' },
+  { id: 'armor', label: 'Костюмы' },
 ]
 
-const PTNS = [
-  { id: 'all', label: 'Все заточки' },
-  ...Array.from({ length: 16 }, (_, i) => ({ id: String(i), label: `+${i}` })),
+const RANKS = [
+  { id: 'all', label: 'Все ранги' },
+  { id: 'DEFAULT', label: 'Отмычка' },
+  { id: 'RANK_NEWBIE', label: 'Новичок' },
+  { id: 'RANK_STALKER', label: 'Сталкер' },
+  { id: 'RANK_VETERAN', label: 'Ветеран' },
+  { id: 'RANK_MASTER', label: 'Мастер' },
+  { id: 'RANK_LEGEND', label: 'Легенда' },
 ]
 
 const SORT_OPTIONS = [
@@ -23,62 +24,36 @@ const SORT_OPTIONS = [
   { id: 'price-asc', label: 'Цена ↑' },
 ]
 
-function filterAndSortItems(items, quality, ptn, sort) {
-  const filtered = []
-
-  for (const item of items) {
-    const byQuality = (item.byQuality ?? [])
-      .filter((q) => quality === 'all' || q.qlt === Number(quality))
-      .map((q) => ({
-        ...q,
-        byPtn: (q.byPtn ?? []).filter(
-          (row) => ptn === 'all' || row.ptn === Number(ptn),
-        ),
-      }))
-      .filter((q) => q.byPtn.length > 0)
-
-    if (byQuality.length === 0) continue
-
-    const rows = byQuality.flatMap((q) => q.byPtn)
-    const bestDiscount = Math.max(...rows.map((r) => r.discountPercent))
-    const prices = rows
-      .map((r) => r.minBuyoutPerUnit)
-      .filter((p) => p != null && p > 0)
-    const sortPrice = prices.length ? Math.min(...prices) : null
-
-    filtered.push({
-      ...item,
-      byQuality,
-      bestDiscount,
-      sortPrice,
-    })
-  }
+function filterAndSortItems(items, rank, sort) {
+  const filtered = items.filter(
+    (item) => rank === 'all' || item.color === rank || item.rankId === rank,
+  )
 
   filtered.sort((a, b) => {
     if (sort === 'price-asc') {
-      if (a.sortPrice == null && b.sortPrice == null) return 0
-      if (a.sortPrice == null) return 1
-      if (b.sortPrice == null) return -1
-      return a.sortPrice - b.sortPrice
+      if (a.minBuyoutPerUnit == null && b.minBuyoutPerUnit == null) return 0
+      if (a.minBuyoutPerUnit == null) return 1
+      if (b.minBuyoutPerUnit == null) return -1
+      return a.minBuyoutPerUnit - b.minBuyoutPerUnit
     }
     if (sort === 'price-desc') {
-      if (a.sortPrice == null && b.sortPrice == null) return 0
-      if (a.sortPrice == null) return 1
-      if (b.sortPrice == null) return -1
-      return b.sortPrice - a.sortPrice
+      if (a.minBuyoutPerUnit == null && b.minBuyoutPerUnit == null) return 0
+      if (a.minBuyoutPerUnit == null) return 1
+      if (b.minBuyoutPerUnit == null) return -1
+      return b.minBuyoutPerUnit - a.minBuyoutPerUnit
     }
-    return b.bestDiscount - a.bestDiscount
+    return (b.discountPercent ?? 0) - (a.discountPercent ?? 0)
   })
 
   return filtered
 }
 
-function AuctionValueNow() {
+function AuctionValueNowGear() {
   const [region, setRegion] = useState('RU')
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [quality, setQuality] = useState('all')
-  const [ptn, setPtn] = useState('all')
+  const [category, setCategory] = useState('equipment')
+  const [rank, setRank] = useState('all')
   const [sort, setSort] = useState('discount')
   const [items, setItems] = useState([])
   const [itemOffset, setItemOffset] = useState(0)
@@ -106,10 +81,11 @@ function AuctionValueNow() {
     if (!append) setError(null)
 
     try {
-      const data = await getAuctionValueNow({
+      const data = await getAuctionValueNowGear({
         region,
         locale,
-        category: 'artefact',
+        category,
+        rank: 'all',
         q: searchQuery,
         itemOffset: offset,
         minDiscount: 10,
@@ -119,6 +95,7 @@ function AuctionValueNow() {
         const next = append ? [...prev, ...(data.items || [])] : (data.items || [])
         setStats({
           apiMode: data.apiMode,
+          totalDeals: data.totalDeals,
           totalItems: next.length,
           scannedItems: data.scannedItems,
           totalMatchingItems: data.totalMatchingItems,
@@ -134,43 +111,19 @@ function AuctionValueNow() {
     } finally {
       setBusy(false)
     }
-  }, [region, locale, searchQuery])
+  }, [region, locale, category, searchQuery])
 
   useEffect(() => {
     if (!metaReady) return
     setItemOffset(0)
     fetchDeals(0, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metaReady, region, searchQuery])
+  }, [metaReady, region, category, searchQuery])
 
   const displayItems = useMemo(
-    () => filterAndSortItems(items, quality, ptn, sort),
-    [items, quality, ptn, sort],
+    () => filterAndSortItems(items, rank, sort),
+    [items, rank, sort],
   )
-
-  const displayPairs = useMemo(
-    () => displayItems.reduce(
-      (sum, item) => sum + (item.byQuality ?? []).reduce(
-        (qSum, q) => qSum + (q.byPtn?.length || 0),
-        0,
-      ),
-      0,
-    ),
-    [displayItems],
-  )
-
-  const loadedPairs = useMemo(
-    () => items.reduce(
-      (sum, item) => sum + (item.byQuality ?? []).reduce(
-        (qSum, q) => qSum + (q.byPtn?.length || 0),
-        0,
-      ),
-      0,
-    ),
-    [items],
-  )
-
-  const filtersActive = quality !== 'all' || ptn !== 'all'
 
   function handleSearchSubmit(e) {
     e.preventDefault()
@@ -187,14 +140,16 @@ function AuctionValueNow() {
     <div className="space-y-4">
       <div className="border border-zone-border bg-zone-panel/60 px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="font-display text-xl text-zone-amber">Выгода сейчас(арты)</h2>
+          <h2 className="font-display text-xl text-zone-amber">
+            Выгода сейчас(снаряжение)
+          </h2>
           {stats?.apiMode === 'production' && (
             <span className="text-xs text-zone-green">● live</span>
           )}
         </div>
         <p className="mt-1 text-sm text-zone-muted">
-          Как в Статистике: сравнение мин. и средней отдельно для каждой пары
-          качество + заточка (+0…+15). Порог −10%.
+          Оружие и костюмы: мин. цена сейчас vs средняя по продажам. Ранги —
+          Отмычка → Легенда. Порог −10%.
         </p>
       </div>
 
@@ -214,7 +169,7 @@ function AuctionValueNow() {
           type="text"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Поиск артефакта..."
+          placeholder="Поиск оружия / костюма..."
           className="min-w-0 flex-1 border border-zone-border bg-zone-panel px-3 py-2 text-sm text-zone-text outline-none focus:border-zone-amber"
         />
         <button
@@ -225,24 +180,25 @@ function AuctionValueNow() {
           Поиск
         </button>
         <select
-          value={quality}
-          onChange={(e) => setQuality(e.target.value)}
-          className="border border-zone-border bg-zone-panel px-2 py-2 text-sm text-zone-text outline-none focus:border-zone-amber"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          disabled={loading}
+          className="border border-zone-border bg-zone-panel px-2 py-2 text-sm text-zone-text outline-none focus:border-zone-amber disabled:opacity-50"
         >
-          {QUALITIES.map((q) => (
-            <option key={q.id} value={q.id}>
-              {q.label}
+          {CATEGORIES.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
             </option>
           ))}
         </select>
         <select
-          value={ptn}
-          onChange={(e) => setPtn(e.target.value)}
+          value={rank}
+          onChange={(e) => setRank(e.target.value)}
           className="border border-zone-border bg-zone-panel px-2 py-2 text-sm text-zone-text outline-none focus:border-zone-amber"
         >
-          {PTNS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
+          {RANKS.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.label}
             </option>
           ))}
         </select>
@@ -274,40 +230,35 @@ function AuctionValueNow() {
       <p className="text-xs text-zone-muted">
         {loading
           ? 'Сканирование...'
-          : [
-              `Карточек: ${displayItems.length}${filtersActive ? ` из ${items.length}` : ''}`,
-              `пар: ${displayPairs}${filtersActive ? ` из ${loadedPairs}` : ''}`,
-              filtersActive
-                ? `фильтр: ${QUALITIES.find((q) => q.id === quality)?.label || quality} / ${PTNS.find((p) => p.id === ptn)?.label || ptn}`
-                : null,
+          : `Показано: ${displayItems.length} · загружено: ${items.length} · выгодных: ${stats?.totalDeals ?? 0}${
               stats?.totalMatchingItems != null
-                ? `проверено: ${itemOffset} / ${stats.totalMatchingItems}`
-                : null,
-            ].filter(Boolean).join(' · ')}
+                ? ` · проверено: ${itemOffset} / ${stats.totalMatchingItems}`
+                : ''
+            }`}
       </p>
 
       {loading && (
         <p className="py-12 text-center text-sm text-zone-amber animate-pulse-glow">
-          Считаем выгоду по качеству и заточке...
+          Считаем выгоду по снаряжению...
         </p>
       )}
 
       {!loading && items.length === 0 && (
         <p className="py-12 text-center text-sm text-zone-muted">
-          Нет пар качество+заточка со скидкой −10% и ниже. Нажми «Сканировать ещё».
+          Нет снаряжения со скидкой −10% и ниже. Нажми «Сканировать ещё».
         </p>
       )}
 
       {!loading && items.length > 0 && displayItems.length === 0 && (
         <p className="py-12 text-center text-sm text-zone-muted">
-          Нет выгодных лотов под выбранные фильтры качества/заточки.
+          Нет выгодных лотов под выбранный ранг.
         </p>
       )}
 
       {!loading && displayItems.length > 0 && (
-        <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
           {displayItems.map((item) => (
-            <ValueNowCard
+            <ValueNowGearCard
               key={item.itemId}
               item={item}
               locale={locale}
@@ -331,4 +282,4 @@ function AuctionValueNow() {
   )
 }
 
-export default AuctionValueNow
+export default AuctionValueNowGear

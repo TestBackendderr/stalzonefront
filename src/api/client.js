@@ -60,6 +60,28 @@ export function getAuctionValueNow({
   })
 }
 
+export function getAuctionValueNowGear({
+  region = 'RU',
+  locale = 'ru',
+  category = 'equipment',
+  rank = 'all',
+  q = '',
+  itemOffset = 0,
+  maxItemsScan = 15,
+  minDiscount = 10,
+} = {}) {
+  return request('/auction/value-now-gear', {
+    region,
+    locale,
+    category,
+    rank,
+    q,
+    itemOffset,
+    maxItemsScan,
+    minDiscount,
+  })
+}
+
 export function getAuctionStats({
   region = 'RU',
   locale = 'ru',
@@ -111,6 +133,9 @@ export function browseAuction({
   locale = 'ru',
   category = 'all',
   quality = 'all',
+  qlt = 'all',
+  ptn = 'all',
+  rank = 'all',
   q = '',
   itemOffset = 0,
   targetLots = 50,
@@ -121,6 +146,9 @@ export function browseAuction({
     locale,
     category,
     quality,
+    qlt,
+    ptn,
+    rank,
     q,
     itemOffset,
     targetLots,

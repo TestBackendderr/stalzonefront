@@ -4,6 +4,7 @@ const navItems = [
   { to: '/auction', label: 'Аукцион', icon: '◈' },
   { to: '/auction-deals', label: 'Скидки(в работе)', icon: '◇' },
   { to: '/auction-value-now', label: 'Выгода сейчас(арты)', icon: '▼' },
+  { to: '/auction-value-now-gear', label: 'Выгода сейчас(снаряжение)', icon: '◆' },
   { to: '/auction-stats', label: 'Статистика', icon: '▣' },
   { to: '/hideout', label: 'Убежище', icon: '⌂' },
   { to: '/crafts', label: 'Крафты', icon: '⚙' },

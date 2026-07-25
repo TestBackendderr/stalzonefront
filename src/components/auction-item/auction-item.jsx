@@ -9,7 +9,7 @@ const COLOR_CLASS = {
   RANK_VETERAN: 'text-zone-cyan',
   RANK_MASTER: 'text-zone-amber',
   RANK_LEGEND: 'text-orange-400',
-  DEFAULT: 'text-purple-400',
+  DEFAULT: 'text-zone-muted',
 }
 
 const QLT_CLASS = {
@@ -54,6 +54,7 @@ function AuctionItemHistory() {
   const region = searchParams.get('region') || 'RU'
   const qlt = searchParams.get('qlt') || 'all'
   const ptn = searchParams.get('ptn') || 'all'
+  const from = searchParams.get('from') || ''
   const period = PERIODS.some((p) => p.id === searchParams.get('period'))
     ? searchParams.get('period')
     : '1'
@@ -62,6 +63,18 @@ function AuctionItemHistory() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const isEquipment = data?.mode === 'equipment'
+  const backTo = from === 'auction'
+    ? '/auction'
+    : from === 'gear' || (isEquipment && from !== 'arts')
+      ? '/auction-value-now-gear'
+      : '/auction-value-now'
+  const backLabel = from === 'auction'
+    ? '← Аукцион'
+    : from === 'gear' || (isEquipment && from !== 'arts')
+      ? '← Выгода сейчас (снаряжение)'
+      : '← Выгода сейчас (арты)'
 
   useEffect(() => {
     let cancelled = false
@@ -102,6 +115,7 @@ function AuctionItemHistory() {
     if (value === 'all' || (key === 'period' && value === '1')) next.delete(key)
     else next.set(key, String(value))
     if (!next.get('region')) next.set('region', region)
+    if (from) next.set('from', from)
     setSearchParams(next)
   }
 
@@ -114,10 +128,10 @@ function AuctionItemHistory() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          to="/auction-value-now"
+          to={backTo}
           className="border border-zone-border bg-zone-panel px-3 py-1.5 text-xs uppercase tracking-wider text-zone-muted no-underline hover:border-zone-amber hover:text-zone-amber"
         >
-          ← Выгода сейчас
+          {backLabel}
         </Link>
       </div>
 
@@ -140,7 +154,9 @@ function AuctionItemHistory() {
           <div className="min-w-0 flex-1">
             <h2 className={`font-display text-xl ${colorClass}`}>{name}</h2>
             <p className="mt-1 text-sm text-zone-muted">
-              История продаж · фильтр по качеству и заточке
+              {isEquipment
+                ? `История продаж · ${item?.rankLabel || 'ранг'} · ${item?.categoryLabel || item?.category || 'снаряжение'}`
+                : 'История продаж · фильтр по качеству и заточке'}
             </p>
           </div>
           {data?.apiMode === 'production' && (
@@ -150,37 +166,47 @@ function AuctionItemHistory() {
       </div>
 
       <div className="flex flex-col gap-2 border border-zone-border bg-zone-dark/40 p-3 sm:flex-row sm:items-center">
-        <label className="text-[10px] uppercase tracking-widest text-zone-muted">
-          Качество
-        </label>
-        <select
-          value={qlt}
-          onChange={(e) => updateFilter('qlt', e.target.value)}
-          disabled={loading}
-          className="border border-zone-border bg-zone-panel px-2 py-2 text-sm text-zone-text outline-none focus:border-zone-amber disabled:opacity-50"
-        >
-          {qualities.map((q) => (
-            <option key={q.id} value={q.id}>
-              {q.label}
-            </option>
-          ))}
-        </select>
+        {!isEquipment && (
+          <>
+            <label className="text-[10px] uppercase tracking-widest text-zone-muted">
+              Качество
+            </label>
+            <select
+              value={qlt}
+              onChange={(e) => updateFilter('qlt', e.target.value)}
+              disabled={loading}
+              className="border border-zone-border bg-zone-panel px-2 py-2 text-sm text-zone-text outline-none focus:border-zone-amber disabled:opacity-50"
+            >
+              {qualities.map((q) => (
+                <option key={q.id} value={q.id}>
+                  {q.label}
+                </option>
+              ))}
+            </select>
 
-        <label className="text-[10px] uppercase tracking-widest text-zone-muted sm:ml-2">
-          Заточка
-        </label>
-        <select
-          value={ptn}
-          onChange={(e) => updateFilter('ptn', e.target.value)}
-          disabled={loading}
-          className="border border-zone-border bg-zone-panel px-2 py-2 text-sm text-zone-text outline-none focus:border-zone-amber disabled:opacity-50"
-        >
-          {ptns.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
-        </select>
+            <label className="text-[10px] uppercase tracking-widest text-zone-muted sm:ml-2">
+              Заточка
+            </label>
+            <select
+              value={ptn}
+              onChange={(e) => updateFilter('ptn', e.target.value)}
+              disabled={loading}
+              className="border border-zone-border bg-zone-panel px-2 py-2 text-sm text-zone-text outline-none focus:border-zone-amber disabled:opacity-50"
+            >
+              {ptns.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
+        {isEquipment && item?.rankLabel && (
+          <span className={`text-sm ${colorClass}`}>
+            Ранг: {item.rankLabel}
+          </span>
+        )}
 
         <label className="text-[10px] uppercase tracking-widest text-zone-muted sm:ml-2">
           Период
@@ -263,7 +289,7 @@ function AuctionItemHistory() {
               } · слева старые · справа новые
               {data.summary.coveredPeriod === false && (
                 <span className="ml-2 normal-case tracking-normal text-zone-amber">
-                  (загружены не все продажи за период — арт очень активный)
+                  (загружены не все продажи за период — предмет очень активный)
                 </span>
               )}
             </p>
@@ -275,12 +301,16 @@ function AuctionItemHistory() {
               Последние продажи
             </p>
             <div className="max-h-[360px] overflow-y-auto">
-              <table className="w-full min-w-[520px] border-collapse text-sm">
+              <table className="w-full min-w-[320px] border-collapse text-sm">
                 <thead className="sticky top-0 bg-zone-dark/90">
                   <tr className="border-b border-zone-border text-left text-[10px] uppercase tracking-widest text-zone-muted">
                     <th className="px-3 py-2 font-normal">Когда</th>
-                    <th className="px-3 py-2 font-normal">Качество</th>
-                    <th className="px-3 py-2 font-normal">Заточка</th>
+                    {!isEquipment && (
+                      <>
+                        <th className="px-3 py-2 font-normal">Качество</th>
+                        <th className="px-3 py-2 font-normal">Заточка</th>
+                      </>
+                    )}
                     <th className="px-3 py-2 font-normal">Цена</th>
                   </tr>
                 </thead>
@@ -293,10 +323,14 @@ function AuctionItemHistory() {
                       <td className="px-3 py-2 text-zone-muted">
                         {formatTime(sale.time)}
                       </td>
-                      <td className={`px-3 py-2 ${QLT_CLASS[sale.qlt] ?? 'text-zone-text'}`}>
-                        {sale.qualityLabel}
-                      </td>
-                      <td className="px-3 py-2 text-zone-cyan">{sale.ptnLabel}</td>
+                      {!isEquipment && (
+                        <>
+                          <td className={`px-3 py-2 ${QLT_CLASS[sale.qlt] ?? 'text-zone-text'}`}>
+                            {sale.qualityLabel}
+                          </td>
+                          <td className="px-3 py-2 text-zone-cyan">{sale.ptnLabel}</td>
+                        </>
+                      )}
                       <td className="px-3 py-2 text-zone-amber">
                         {formatPrice(sale.pricePerUnit)}
                         {sale.amount > 1 && (

@@ -16,8 +16,14 @@ const sections = [
   {
     to: '/auction-value-now',
     icon: '▼',
-    title: 'Выгода сейчас',
+    title: 'Выгода сейчас (арты)',
     description: 'Артефакты, где мин. цена сейчас минимум на 10% ниже средней.',
+  },
+  {
+    to: '/auction-value-now-gear',
+    icon: '◆',
+    title: 'Выгода сейчас (снаряжение)',
+    description: 'Оружие и костюмы дешевле средней — по рангам Отмычка…Легенда.',
   },
   {
     to: '/auction-stats',

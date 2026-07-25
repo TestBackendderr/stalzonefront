@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getItemIconUrl } from '../../api/client'
 import { useCountdown } from './useCountdown'
 
@@ -8,7 +9,16 @@ const COLOR_CLASS = {
   RANK_VETERAN: 'text-zone-cyan',
   RANK_MASTER: 'text-zone-amber',
   RANK_LEGEND: 'text-orange-400',
-  DEFAULT: 'text-purple-400',
+  DEFAULT: 'text-zone-muted',
+}
+
+const QLT_CLASS = {
+  0: 'text-zone-text',
+  1: 'text-zone-green',
+  2: 'text-zone-cyan',
+  3: 'text-zone-amber',
+  4: 'text-orange-400',
+  5: 'text-purple-400',
 }
 
 function formatPrice(value) {
@@ -43,6 +53,15 @@ function sortLots(lots, sortField, sortDirection) {
   })
 }
 
+function buildItemLink(lot, region) {
+  const params = new URLSearchParams()
+  if (region) params.set('region', region)
+  params.set('from', 'auction')
+  if (lot.qlt != null && lot.qlt !== '') params.set('qlt', String(lot.qlt))
+  if (lot.ptn != null && lot.ptn !== '') params.set('ptn', String(lot.ptn))
+  return `/auction/item/${encodeURIComponent(lot.itemId)}?${params.toString()}`
+}
+
 function SortableHeader({ label, field, activeField, direction, onSort }) {
   const active = activeField === field
 
@@ -65,18 +84,28 @@ function SortableHeader({ label, field, activeField, direction, onSort }) {
   )
 }
 
-function LotRow({ lot, locale }) {
+function LotRow({ lot, locale, region, filterMode }) {
   const countdown = useCountdown(lot.endTime)
   const name = lot.nameRu || lot.nameEn || lot.itemId
   const colorClass = COLOR_CLASS[lot.color] ?? 'text-zone-text'
   const iconUrl = getItemIconUrl(lot.icon, locale)
   const bidPrice = getBidValue(lot)
+  const itemLink = buildItemLink(lot, region)
+
+  const metaLine = filterMode === 'artefact'
+    ? [lot.qualityLabel, lot.ptnLabel].filter(Boolean).join(' · ')
+    : filterMode === 'equipment'
+      ? lot.rankLabel
+      : lot.rankLabel
 
   return (
     <tr className="border-b border-zone-border/30 hover:bg-zone-dark/40">
       <td className="px-3 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-zone-border bg-zone-black/50">
+          <Link
+            to={itemLink}
+            className="flex h-10 w-10 shrink-0 items-center justify-center border border-zone-border bg-zone-black/50 no-underline transition-colors hover:border-zone-amber"
+          >
             {iconUrl ? (
               <img
                 src={iconUrl}
@@ -90,11 +119,27 @@ function LotRow({ lot, locale }) {
             ) : (
               <span className="text-xs text-zone-muted">?</span>
             )}
-          </div>
+          </Link>
           <div>
-            <p className={`text-sm font-medium ${colorClass}`}>{name}</p>
+            <Link
+              to={itemLink}
+              className={`text-sm font-medium no-underline hover:underline ${colorClass}`}
+            >
+              {name}
+            </Link>
             <p className="text-xs text-zone-amber">{countdown}</p>
-            {lot.amount > 1 && (
+            {metaLine && (
+              <p className={`text-[10px] ${
+                filterMode === 'artefact'
+                  ? (QLT_CLASS[lot.qlt] ?? 'text-zone-muted')
+                  : 'text-zone-muted'
+              }`}
+              >
+                {metaLine}
+                {lot.amount > 1 ? ` · x${lot.amount}` : ''}
+              </p>
+            )}
+            {!metaLine && lot.amount > 1 && (
               <p className="text-[10px] text-zone-muted">x{lot.amount}</p>
             )}
           </div>
@@ -110,7 +155,7 @@ function LotRow({ lot, locale }) {
   )
 }
 
-function AuctionTable({ lots, locale }) {
+function AuctionTable({ lots, locale, region, filterMode = 'generic' }) {
   const [sortField, setSortField] = useState(null)
   const [sortDirection, setSortDirection] = useState('asc')
 
@@ -162,7 +207,13 @@ function AuctionTable({ lots, locale }) {
         </thead>
         <tbody>
           {sortedLots.map((lot, i) => (
-            <LotRow key={`${lot.itemId}-${lot.endTime}-${i}`} lot={lot} locale={locale} />
+            <LotRow
+              key={`${lot.itemId}-${lot.endTime}-${i}`}
+              lot={lot}
+              locale={locale}
+              region={region}
+              filterMode={filterMode}
+            />
           ))}
         </tbody>
       </table>

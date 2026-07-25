@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { browseAuction, getAuctionMeta } from '../../api/client'
 import AuctionSidebar from './AuctionSidebar'
 import AuctionToolbar from './AuctionToolbar'
@@ -10,11 +10,53 @@ const TABS = [
   { id: 'my-bids', label: 'мои ставки', active: false },
 ]
 
+function resolveFilterMode(categoryId = 'all') {
+  if (categoryId === 'artefact' || categoryId.startsWith('artefact/')) return 'artefact'
+  if (
+    categoryId === 'equipment'
+    || categoryId === 'weapon'
+    || categoryId === 'armor'
+    || categoryId.startsWith('weapon/')
+    || categoryId.startsWith('armor/')
+  ) {
+    return 'equipment'
+  }
+  return 'generic'
+}
+
+function withEquipmentCategory(categories = []) {
+  const hasEquipment = categories.some((c) => c.id === 'equipment')
+  if (hasEquipment) return categories
+
+  const weapon = categories.find((c) => c.id === 'weapon')
+  const armor = categories.find((c) => c.id === 'armor')
+  const count = (weapon?.count || 0) + (armor?.count || 0)
+  if (!weapon && !armor) return categories
+
+  const equipment = {
+    id: 'equipment',
+    label: 'Снаряжение',
+    count,
+    depth: 0,
+  }
+
+  const allIndex = categories.findIndex((c) => c.id === 'all')
+  if (allIndex >= 0) {
+    const next = [...categories]
+    next.splice(allIndex + 1, 0, equipment)
+    return next
+  }
+  return [equipment, ...categories]
+}
+
 function Auction() {
   const [meta, setMeta] = useState(null)
   const [region, setRegion] = useState('RU')
   const [category, setCategory] = useState('all')
   const [quality, setQuality] = useState('all')
+  const [qlt, setQlt] = useState('all')
+  const [ptn, setPtn] = useState('all')
+  const [rank, setRank] = useState('all')
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [lots, setLots] = useState([])
@@ -26,6 +68,12 @@ function Auction() {
   const [stats, setStats] = useState(null)
 
   const locale = region === 'RU' ? 'ru' : 'global'
+  const filterMode = resolveFilterMode(category)
+
+  const categories = useMemo(
+    () => withEquipmentCategory(meta?.categories ?? []),
+    [meta],
+  )
 
   useEffect(() => {
     getAuctionMeta({ locale })
@@ -47,7 +95,10 @@ function Auction() {
         region,
         locale,
         category,
-        quality,
+        quality: filterMode === 'generic' ? quality : 'all',
+        qlt: filterMode === 'artefact' ? qlt : 'all',
+        ptn: filterMode === 'artefact' ? ptn : 'all',
+        rank: filterMode === 'equipment' ? rank : 'all',
         q: searchQuery,
         itemOffset: offset,
       })
@@ -56,6 +107,7 @@ function Auction() {
         const next = append ? [...prev, ...data.lots] : data.lots
         setStats({
           apiMode: data.apiMode,
+          filterMode: data.filterMode || filterMode,
           totalLots: next.length,
           scannedItems: data.scannedItems,
           totalMatchingItems: data.totalMatchingItems,
@@ -70,14 +122,22 @@ function Auction() {
     } finally {
       setBusy(false)
     }
-  }, [region, locale, category, quality, searchQuery])
+  }, [region, locale, category, quality, qlt, ptn, rank, searchQuery, filterMode])
 
   useEffect(() => {
     if (!meta) return
     setItemOffset(0)
     fetchLots(0, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meta, region, category, quality, searchQuery])
+  }, [meta, region, category, quality, qlt, ptn, rank, searchQuery])
+
+  function handleCategoryChange(nextCategory) {
+    setCategory(nextCategory)
+    setQuality('all')
+    setQlt('all')
+    setPtn('all')
+    setRank('all')
+  }
 
   function handleSearchSubmit() {
     setSearchQuery(searchInput.trim())
@@ -91,7 +151,6 @@ function Auction() {
 
   return (
     <div className="space-y-4">
-      {/* Tabs */}
       <div className="flex border-b border-zone-border">
         {TABS.map((tab) => (
           <button
@@ -128,20 +187,28 @@ function Auction() {
         </div>
       )}
 
-      {/* Main layout: sidebar + content */}
       <div className="flex flex-col gap-4 lg:flex-row">
         {meta && (
           <AuctionSidebar
-            categories={meta.categories}
+            categories={categories}
             activeCategory={category}
-            onCategoryChange={setCategory}
+            onCategoryChange={handleCategoryChange}
           />
         )}
 
         <div className="min-w-0 flex-1 space-y-3">
           {meta && (
             <AuctionToolbar
-              qualities={meta.qualities}
+              filterMode={filterMode}
+              artefactQualities={meta.artefactQualities ?? []}
+              equipmentRanks={meta.equipmentRanks ?? []}
+              qualities={meta.qualities ?? []}
+              qlt={qlt}
+              onQltChange={setQlt}
+              ptn={ptn}
+              onPtnChange={setPtn}
+              rank={rank}
+              onRankChange={setRank}
               quality={quality}
               onQualityChange={setQuality}
               search={searchInput}
@@ -173,7 +240,12 @@ function Auction() {
                     )}
                   </p>
                 )}
-                <AuctionTable lots={lots} locale={locale} />
+                <AuctionTable
+                  lots={lots}
+                  locale={locale}
+                  region={region}
+                  filterMode={stats?.filterMode || filterMode}
+                />
               </>
             )}
           </div>
